@@ -1,7 +1,7 @@
 # Text messaging + mesh relay (NR7Y CW firmware, UV-K5 V1)
 
 Adds a T9 text messenger and simple mesh relaying to the NR7Y CW firmware. All CW features are kept.
-The build uses 61,396 of the 61,440 bytes of flash. To make room, the FM mic-level bar (`ENABLE_AUDIO_BAR`) is off.
+The build uses 61,304 of the 61,440 bytes of flash. To make room, the FM mic-level bar (`ENABLE_AUDIO_BAR`) and scan ranges (`ENABLE_SCAN_RANGES`, which had no key to start it in this build) are off.
 
 Like APRS, every message carries the sender's callsign, and each relay adds its own callsign as it passes the
 message on. You can see exactly how a message reached you, and every station identifies itself in the data it sends.
