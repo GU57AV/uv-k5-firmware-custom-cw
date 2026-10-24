@@ -134,6 +134,8 @@ void SETTINGS_InitEEPROM(void)
 		gEeprom.MESSENGER_CONFIG.__val = Data[3];
 		if (gEeprom.MESSENGER_CONFIG.data.modulation > MOD_AFSK_1200)
 			gEeprom.MESSENGER_CONFIG.data.modulation = MOD_AFSK_1200;
+		// 0x0EA4..7: messenger default frequencies (0xFFFF = factory default)
+		memcpy(gEeprom.MSG_DEFAULT, &Data[4], sizeof(gEeprom.MSG_DEFAULT));
 	#endif
 	#ifdef ENABLE_VOICE
 	gEeprom.VOICE_PROMPT = (Data[0] < 3) ? Data[0] : VOICE_PROMPT_ENGLISH;
@@ -555,6 +557,7 @@ void SETTINGS_SaveSettings(void)
 #endif
 #ifdef ENABLE_MESSENGER
 	State[3] = gEeprom.MESSENGER_CONFIG.__val;
+	memcpy(&State[4], gEeprom.MSG_DEFAULT, sizeof(gEeprom.MSG_DEFAULT));
 #endif
 	EEPROM_WriteBuffer(0x0EA0, State);
 

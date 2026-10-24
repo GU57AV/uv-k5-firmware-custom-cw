@@ -313,6 +313,7 @@ typedef struct {
 	BATTERY_Type_t		  BATTERY_TYPE;
 #ifdef ENABLE_MESSENGER
 	MessengerConfig       MESSENGER_CONFIG;
+	uint16_t              MSG_DEFAULT[2];     // 2m / 70cm messenger frequency, see app/messenger.c
 #endif
 #ifdef ENABLE_RSSI_BAR
 	uint8_t               S0_LEVEL;

@@ -14,8 +14,9 @@ All of NR7Y's CW features are kept. Messages are plain text, with **no encryptio
 ## Quick start
 
 1. Flash **the same build to every radio** on the net. Builds before the callsign version are not compatible.
-2. On each radio, set the same frequency, in **FM**. Turn **BatSav** and **DualW** off on radios that should relay.
-3. Open the messenger: **F**, then **MENU**.
+2. Put each radio in **FM**, in frequency (VFO) mode on 2m or 70cm. Turn **BatSav** and **DualW** off on radios
+   that should relay.
+3. Open the messenger: **F**, then **MENU**. The radio jumps to the messenger frequency (see below).
 4. Set your callsign: type it (in `A` mode), then **hold MENU**. Your call now shows on the bottom line.
 5. Type a message and press **MENU** to send.
 
@@ -57,6 +58,7 @@ the route.
 | | \* | entry mode: `A` upper → `a` lower → `1` digits → `C` **CW** → `A` |
 | | F / hold F | backspace / clear the line |
 | | UP | recall the last message you sent |
+| | hold UP | go back to the frequency you were on before the messenger opened, and make it this band's messenger frequency |
 | | DOWN | route of the newest message; DOWN again for older ones; any other key goes back |
 | | hold MENU | save what you've typed as **your callsign** (up to 6 characters) |
 | | MENU | send |
@@ -86,6 +88,33 @@ ANYONE ON THE NET TONIGHT
 ```
 
 `DIRECT` means it reached you with no relay. For your own messages, it means no relay has been heard yet.
+
+## Messenger frequency
+
+Opening the messenger in **frequency (VFO) mode** tunes to this band's messenger frequency, simplex (any repeater
+offset is turned off), so everyone running the firmware ends up in the same place:
+
+| Band | Factory default | Band plan |
+|---|---|---|
+| 2 m | **145.670 MHz** | ARRL: 145.50–145.80 "miscellaneous and experimental modes" |
+| 70 cm | **446.670 MHz** | ARRL: 445–447 "simplex, links, repeaters (local option)" |
+
+* **Outside the US, or for a different local frequency:** tune to the frequency you want on the main screen,
+  open the messenger (it jumps to the default), then **hold UP**. The radio goes back to your frequency and makes
+  it the messenger frequency for that band from then on. It's stored per band, in steps of 1.25 kHz, so 12.5 kHz
+  channels like 145.5625 are stored exactly. Do it once for 2m and once for 70cm.
+* **Memory channels are never changed.** If you open the messenger on a memory channel, it stays there, so a
+  stored channel is a simple way to use any frequency.
+* Outside 144–148 and 420–450 MHz, nothing changes.
+* You can still tune anywhere afterwards. The jump only happens when the messenger opens.
+
+The US defaults don't suit everywhere. Suggestions to store with hold UP (always check your national or local
+band plan first):
+
+| Region | 2 m | 70 cm | Why |
+|---|---|---|---|
+| EU / UK (IARU Region 1) | 145.550 | 433.900 | 145.575–145.7935 is repeater outputs, and 446 MHz is outside the band (PMR446). 433.8–434.25 is "digital communications and experiments" in the UK plan. |
+| Japan (JARL) | ~144.5–144.7 | ~430.7–431.4 | The JARL plan is legally binding; these appear to be the wide-band data segments. Confirm against the official plan. |
 
 ## Keying messages in CW
 
@@ -120,9 +149,11 @@ on their screen, since it's open amateur traffic.
 * Messages are only sent and received in **FM**. A VFO set to CW or USB won't send data.
 * Relay stations need **BatSav OFF**: the receiver sleeps while saving power and misses packets. They also need
   **DualW OFF**: relays transmit on the TX VFO, which may not be where the message was heard.
-* To fit in flash, two features of the original build are off: the FM mic-level bar (`ENABLE_AUDIO_BAR`) and scan
-  ranges (`ENABLE_SCAN_RANGES`, which had no key to start it in this build). 61,304 of 61,440 bytes are used.
-* The callsign is stored in EEPROM at 0x0F48 and survives a factory reset.
+* To fit in flash, three features of the original build are off: the FM mic-level bar (`ENABLE_AUDIO_BAR`), scan
+  ranges (`ENABLE_SCAN_RANGES`, which had no key to start it in this build) and the hidden frequency-calibration
+  menu (`ENABLE_F_CAL_MENU`). 61,380 of 61,440 bytes are used.
+* The callsign is stored in EEPROM at 0x0F48, and the messenger frequencies at 0x0EA4–0x0EA7. Both survive a
+  factory reset.
 * The mesh follows the behaviour documented for kamilsss655's NUNU protocol. The code was written fresh because
   NUNU itself is not open source, so it is **not** compatible with radios running the NUNU binary.
 
@@ -136,4 +167,4 @@ on their screen, since it's open amateur traffic.
 * Maximum hops: `MSG_MAX_HOPS` in `app/messenger.h` (1-7). Changing it changes the packet size, so all radios
   must match.
 * Build options: `ENABLE_MESSENGER` (on), `ENABLE_MESSENGER_FSK_MUTE` (on: don't play data bursts on the speaker).
-* The original firmware, exactly: `make ENABLE_MESSENGER=0 ENABLE_AUDIO_BAR=1 ENABLE_SCAN_RANGES=1`.
+* The original firmware, exactly: `make ENABLE_MESSENGER=0 ENABLE_AUDIO_BAR=1 ENABLE_SCAN_RANGES=1 ENABLE_F_CAL_MENU=1`.

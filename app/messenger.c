@@ -47,6 +47,14 @@
 #define SEEN_SIZE        8
 #define EEPROM_MYCALL    0x0F48  // 8 bytes, unused by the rest of the firmware, kept on reset
 
+// Messenger frequency per band, used when the messenger opens in frequency (VFO) mode.
+// Saved as 1.25 kHz steps above the band edge; 0xFFFF = factory default (US, ARRL band plan:
+// 145.670 in "misc & experimental modes", 446.670 in the 445-447 simplex/local-option area).
+#define STEP_10HZ 125                                          // 1.25 kHz in 10 Hz units
+static const uint32_t BAND_LO[2] = { 14400000, 42000000 };     // 144 / 420 MHz (10 Hz units)
+static const uint32_t SPAN[2]    = {   400000,  3000000 };     // 4 / 30 MHz
+static const uint32_t FACTORY[2] = { 14567000, 44667000 };     // 145.670 / 446.670 MHz
+
 _Static_assert(sizeof(MeshPacket) == 60, "packet layout");
 _Static_assert((sizeof(MeshPacket) & 1) == 0, "FIFO is 16 bit");
 _Static_assert(MSG_MAX_HOPS >= 1 && MSG_MAX_HOPS <= 7, "hop field is 3 bits");
@@ -70,6 +78,7 @@ static uint8_t    s_seen[SEEN_SIZE][MSG_ID_LEN];
 static uint8_t    s_seenPos;
 static uint8_t    s_sentId[MSG_ID_LEN];
 static uint8_t    s_sentLine = 0xFF;               // log entry holding our last sent message
+static uint32_t   s_prevFreq;                    // where the VFO was before MSG_Open moved it
 static uint32_t   s_rng = 0x2545F491u;
 
 static const char *const T9[9] = {
@@ -415,6 +424,45 @@ void MSG_CwChar(char ch, bool space)
 	gUpdateDisplay = true;
 }
 
+// ---------------------------------------------------------------- default frequency
+
+static void Tune(uint32_t f)
+{
+	gTxVfo->freq_config_RX.Frequency      = f;
+	gTxVfo->TX_OFFSET_FREQUENCY_DIRECTION = TX_OFFSET_FREQUENCY_DIRECTION_OFF;   // mesh is simplex
+	gRequestSaveChannel = 1;                      // saved + reconfigured by the main loop
+}
+
+// save = false (opening the messenger): in frequency mode on 2m / 70cm, go to this band's
+//   messenger frequency, remembering where we were.
+// save = true (hold UP): go back to where we were (if we moved), make that this band's default.
+void MSG_Freq(bool save)
+{
+	if (save && s_prevFreq)
+		Tune(s_prevFreq);
+	s_prevFreq = 0;
+
+	const uint32_t f   = gTxVfo->freq_config_RX.Frequency;
+	const int      b   = f >= BAND_LO[1];         // 0 = 2m, 1 = 70cm
+	const uint32_t off = f - BAND_LO[b];          // wraps huge below the band
+	if (IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE) || off >= SPAN[b]) {
+		if (save)                                 // memory channel or not 2m/70cm
+			gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+		return;
+	}
+
+	uint16_t *d = &gEeprom.MSG_DEFAULT[b];
+	if (save) {
+		*d = off / STEP_10HZ;
+		gRequestSaveSettings = true;
+		gBeepToPlay          = BEEP_1KHZ_60MS_OPTIONAL;
+		return;
+	}
+	const uint32_t to = (*d == 0xFFFF) ? FACTORY[b] : BAND_LO[b] + (uint32_t)*d * STEP_10HZ;
+	if (to != f)
+		s_prevFreq = f, Tune(to);
+}
+
 // ---------------------------------------------------------------- keys
 
 static void InsertChar(KEY_Code_t key)
@@ -463,6 +511,8 @@ void MSG_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 	if (bKeyHeld) {
 		if (bKeyPressed && Key == KEY_F)          // long F: clear the line
 			memset(gMsgInput, 0, sizeof(gMsgInput)), s_cursor = s_prevKey = 0;
+		if (bKeyPressed && Key == KEY_UP)
+			MSG_Freq(true);
 		if (bKeyPressed && Key == KEY_MENU && gMsgInput[0]) {
 			SetMyCall(gMsgInput);                 // long MENU: typed text becomes my callsign
 			memset(gMsgInput, 0, sizeof(gMsgInput)), s_cursor = s_prevKey = 0;

@@ -91,6 +91,7 @@ void MSG_EnableRX(bool enable);
 void MSG_StorePacket(uint16_t interrupt_bits);
 void MSG_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld);
 void MSG_CwChar(char ch, bool space);       // called by the CW decoder
+void MSG_Freq(bool save);                   // messenger frequency: jump to it / save it
 
 #endif
 #endif

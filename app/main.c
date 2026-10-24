@@ -541,6 +541,7 @@ static void MAIN_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
 			gWasFKeyPressed       = false;
 			gUpdateStatus         = true;
 			hasNewMessage         = 0;
+			MSG_Freq(false);                    // jump to the messenger frequency
 			gRequestDisplayScreen = DISPLAY_MSG;
 			return;
 		}

@@ -9,7 +9,8 @@ This repository builds on the egzumer codebase by adding a set of features speci
 > Press **F** then **MENU** to send short text messages to other radios running this firmware, typed on the
 > keypad or **keyed in CW** with your paddle. Radios relay each other's messages (up to 3 hops) to extend range,
 > with no infrastructure. Like APRS, each message carries the sender's callsign and every relay's callsign, so you
-> can see the route. `@CALL` or `CALL DE` addresses a message to one station. Plain text only, no encryption,
+> can see the route. `@CALL` or `CALL DE` addresses a message to one station. Opens on a common messenger
+> frequency (145.670 / 446.670 MHz by default, changeable per band). Plain text only, no encryption,
 > for amateur use. All CW features are kept. Tested in a simulator, not yet on the air.
 > **How it works, setup, keys and menus: [MESH.md](MESH.md)**
 
@@ -144,7 +145,7 @@ You'll find the options at the top of "Makefile" ('0' = disable, '1' = enable) .
 | ENABLE_KEEP_MEM_NAME | maintain channel name when (re)saving memory channel|
 | ENABLE_WIDE_RX | full 18MHz to 1300MHz RX (though front-end/PA not designed for full range)|
 | ENABLE_TX_WHEN_AM | allow TX (always FM) when RX is set to AM|
-| ENABLE_F_CAL_MENU | enable the radios hidden frequency calibration menu |
+| ENABLE_F_CAL_MENU | enable the radios hidden frequency calibration menu (**off** in this fork, to make room for the messenger) |
 | ENABLE_CTCSS_TAIL_PHASE_SHIFT | standard CTCSS tail phase shift rather than QS's own 55Hz tone method|
 | ENABLE_BOOT_BEEPS | gives user audio feedback on volume knob position at boot-up |
 | ENABLE_SHOW_CHARGE_LEVEL | show the charge level when the radio is on charge |
