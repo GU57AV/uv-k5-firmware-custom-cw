@@ -6,9 +6,12 @@
 This repository builds on the egzumer codebase by adding a set of features specifically for CW operators.
 
 > ### 📡 This fork adds text messaging with mesh relaying
-> Press **F** then **MENU** to send short text messages to other radios running this firmware. Radios relay each
-> other's messages (up to 3 hops) to extend range, with no infrastructure. Plain text only, no encryption, for
-> amateur use. All CW features are kept. Setup, keys and menu items are in **[MESH.md](MESH.md)**.
+> Press **F** then **MENU** to send short text messages to other radios running this firmware, typed on the
+> keypad or **keyed in CW** with your paddle. Radios relay each other's messages (up to 3 hops) to extend range,
+> with no infrastructure. Like APRS, each message carries the sender's callsign and every relay's callsign, so you
+> can see the route. `@CALL` or `CALL DE` addresses a message to one station. Plain text only, no encryption,
+> for amateur use. All CW features are kept. Tested in a simulator, not yet on the air.
+> **How it works, setup, keys and menus: [MESH.md](MESH.md)**
 
 - High-speed RX/TX switching for realtime Morse code sending in true CW modulation
 - Automatic iambic keyer with A/B/Ultimatic/Bug modes
@@ -152,13 +155,15 @@ You'll find the options at the top of "Makefile" ('0' = disable, '1' = enable) .
 | ENABLE_SQUELCH_MORE_SENSITIVE | make squelch levels a little bit more sensitive - I plan to let user adjust the values themselves |
 | ENABLE_FASTER_CHANNEL_SCAN | increases the channel scan speed, but the squelch is also made more twitchy |
 | ENABLE_RSSI_BAR | enable a dBm/Sn RSSI bar graph level in place of the little antenna symbols |
-| ENABLE_AUDIO_BAR | experimental, display an audio bar level when TX'ing |
+| ENABLE_AUDIO_BAR | experimental, display an audio bar level when TX'ing (**off** in this fork, to make room for the messenger) |
 | ENABLE_COPY_CHAN_TO_VFO | copy current channel settings into frequency mode. Long press `1 BAND` when in channel mode |
 | ENABLE_SPECTRUM | fagci spectrum analyzer, activated with `F` + `5 NOAA`|
 | ENABLE_REDUCE_LOW_MID_TX_POWER | makes medium and low power settings even lower |
 | ENABLE_BYP_RAW_DEMODULATORS | additional BYP (bypass?) and RAW demodulation options, proved not to be very useful, but it is there if you want to experiment |
 | ENABLE_BLMIN_TMP_OFF | additional function for configurable buttons that toggles `BLMin` on and off wihout saving it to the EEPROM |
-| ENABLE_SCAN_RANGES | scan range mode for frequency scanning, see wiki for instructions (radio operation -> frequency scanning) |
+| ENABLE_SCAN_RANGES | scan range mode for frequency scanning, see wiki for instructions (radio operation -> frequency scanning) (**off** in this fork: no key starts it in this build) |
+| ENABLE_MESSENGER | text messenger with mesh relaying, see [MESH.md](MESH.md) |
+| ENABLE_MESSENGER_FSK_MUTE | don't play received data bursts on the speaker |
 |🧰 **DEBUGGING** ||
 | ENABLE_AM_FIX_SHOW_DATA| displays settings used by  AM-fix when AM transmission is received |
 | ENABLE_AGC_SHOW_DATA | displays AGC settings |

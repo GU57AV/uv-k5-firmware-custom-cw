@@ -1,78 +1,139 @@
 # Text messaging + mesh relay (NR7Y CW firmware, UV-K5 V1)
 
-Adds a T9 text messenger and simple mesh relaying to the NR7Y CW firmware. All CW features are kept.
-The build uses 61,304 of the 61,440 bytes of flash. To make room, the FM mic-level bar (`ENABLE_AUDIO_BAR`) and scan ranges (`ENABLE_SCAN_RANGES`, which had no key to start it in this build) are off.
+Send short text messages between UV-K5 radios running this firmware. Radios pass each other's messages on, up to
+3 relays, to reach stations out of direct range, with no repeater or other infrastructure. Like APRS, every
+message carries the sender's callsign and the callsign of each relay, so you can see how it got to you. You can
+type messages on the keypad or key them in CW.
 
-Like APRS, every message carries the sender's callsign, and each relay adds its own callsign as it passes the
-message on. You can see exactly how a message reached you, and every station identifies itself in the data it sends.
+All of NR7Y's CW features are kept. Messages are plain text, with **no encryption**.
 
-The mesh follows the behaviour documented for kamilsss655's NUNU protocol: flooding with a hop limit, carrier
-sense before transmitting, a CRC check, and "relay to be relayed". The code was written fresh because NUNU itself
-is not open source. It is **not** guaranteed to interoperate with radios running the NUNU binary.
+> **Status: tested in a simulator, not yet on the air.** The protocol and screen logic pass an automated test
+> suite against a simulated radio chip, but real RF behaviour (timing, levels, collisions) is still to be proven.
+> Expect fixes after the first on-air tests.
 
-There is **no encryption**: messages are plain text.
+## Quick start
 
-## Use
+1. Flash **the same build to every radio** on the net. Builds before the callsign version are not compatible.
+2. On each radio, set the same frequency, in **FM**. Turn **BatSav** and **DualW** off on radios that should relay.
+3. Open the messenger: **F**, then **MENU**.
+4. Set your callsign: type it (in `A` mode), then **hold MENU**. Your call now shows on the bottom line.
+5. Type a message and press **MENU** to send.
+
+## How it works
+
+1. **Sending.** Your radio builds a packet with your callsign, a random message ID, the text, a hop counter set to 3
+   and a checksum. It waits for the channel to be quiet, plus a short random delay, then sends it as a data burst
+   of about half a second.
+2. **Relaying.** Every radio in range receives it and checks the checksum. A damaged packet is thrown away and
+   never passed on. If the radio has **MsgRly** on, a callsign set, and hops left, it:
+   * adds its own callsign to the packet's route,
+   * lowers the hop counter by one,
+   * waits a random moment, so two relays that heard the same packet don't transmit together,
+   * waits for a quiet channel, then sends it on.
+3. **Stopping.** Each radio remembers the IDs of the last 8 messages it has seen and ignores repeats, so a
+   message is shown and relayed once per radio. When the hop counter reaches 0 it is shown but not relayed.
+   This allows at most 3 relays, so a message reaches up to 4 radio-to-radio links from you.
+4. **Delivery check.** When your radio hears a neighbour relay your message, the `>` in front of it turns into
+   `+` and the route view shows who relayed it. Nothing extra is transmitted for this.
+5. **Relay to be relayed.** A radio with MsgRly OFF sends its own messages with 0 hops, so nobody relays them.
+   Only stations that relay for others get relayed.
+
+```
+ You (NR7Y)        K2ABC             N0CALL           VE3XYZ
+ sends, hops 3 ──> relays, hops 2 ──> relays, hops 1 ──> relays, hops 0 ──> (shown, not relayed)
+                   route: K2ABC      route: K2ABC,      route: K2ABC,
+                                            N0CALL            N0CALL, VE3XYZ
+```
+
+Every station's callsign travels in the data it transmits: the sender's in the "from" field, each relay's in
+the route.
+
+## Keys
 
 | Where | Key | Action |
 |---|---|---|
 | Main screen | **F**, then **MENU** | open messenger |
-| Messenger | 0-9 | T9 entry (tap a key repeatedly to cycle letters; 0 = space) |
-| | \* | switch entry mode: `A` upper, `a` lower, `1` digits, `C` **CW** (key the message with your paddle or key) |
+| Messenger | 0-9 | type (tap a key repeatedly to cycle letters; 1 = `. , ? ! - /`; 0 = space) |
+| | \* | entry mode: `A` upper → `a` lower → `1` digits → `C` **CW** → `A` |
 | | F / hold F | backspace / clear the line |
 | | UP | recall the last message you sent |
-| | DOWN | show the route of the newest message; DOWN again for older ones, any other key to go back |
-| | hold MENU | save what you've typed as **your callsign** (type it in `A` mode; up to 6 characters) |
+| | DOWN | route of the newest message; DOWN again for older ones; any other key goes back |
+| | hold MENU | save what you've typed as **your callsign** (up to 6 characters) |
 | | MENU | send |
-| | PTT | voice as normal (you stay on the messenger screen); in `C` mode PTT/side keys are your paddles |
-| | EXIT | back to the main screen |
+| | PTT | voice as normal (you stay on the messenger screen); in `C` mode PTT and the side keys are your paddles |
+| | EXIT | back to the main screen (also leaves `C` mode) |
 
-**Set your callsign first.** Until you do, the input line shows `NO CALL SET`, the radio won't send, and it won't
-relay. The callsign is kept in EEPROM (0x0F48) and survives a reset.
-
-On screen, `NR7Y:` marks a message received direct and `NR7Y>` one that came through relays. `>` marks a message
-you sent, and it turns into `+` when you hear a station relay it. The route view then shows who relayed it.
-An envelope icon in the status bar means you have an unread message.
+## The screen
 
 ```
-FROM VE3XYZ          route view (DOWN)
+W1AW:GOOD MORNING          received direct ("NAME:")
+VE3XYZ>ANYONE ON THE       received through relays ("NAME>")
+ NET TONIGHT
++QRV 146.52                sent by you; '+' = heard relayed ('>' = not yet)
+A:_            NR7Y        entry mode, what you're typing, your callsign
+```
+
+Messages wrap over two rows, and the three newest are kept. Until you set a callsign, the bottom line shows
+`NO CALL SET`, and the radio won't send or relay. An envelope icon in the status bar means an unread message.
+
+Route view (DOWN):
+
+```
+FROM VE3XYZ
 VIA K2ABC
     N0CALL
-ABCDEFGHIJKLMNOPQR
-STUVWXYZ012
+ANYONE ON THE NET TONIGHT
 ```
+
+`DIRECT` means it reached you with no relay. For your own messages, it means no relay has been heard yet.
 
 ## Keying messages in CW
 
-Press \* until the mode shows `C`. The keyer now gives sidetone only (nothing goes on the air), and every character
-you key is typed into the message. It uses your normal keyer settings: WPM, mode and key input. A word gap
-inserts a space. Press MENU to send, or \* to go back to `A`. Leaving the messenger also leaves CW mode.
+Press \* until the mode shows `C`. The keyer now gives sidetone only, with nothing going on the air, and each
+character you key is typed into the message. It uses your normal keyer settings: WPM, keyer mode and key input.
+A word gap inserts a space. Press MENU to send, or \* to go back to `A`.
+
+While in `C` mode, the speaker carries only your sidetone, so you won't hear voice traffic. Data messages are
+still received, except while you're actually keying a character.
 
 ## Addressed messages
 
 Everyone receives and relays every message. Starting a message with an address only changes who gets the alert
 (beep + envelope icon):
 
-* `@NR7Y HI` or `NR7Y DE W9SSN HI` alerts only NR7Y. The second form can be keyed in CW, since Morse has no `@`.
+* `@NR7Y HI` or `NR7Y DE W9SSN HI` alerts only NR7Y. Use the second form in CW, since Morse has no `@`.
 * `CQ DE W9SSN`, `QST ...` and anything without an address alert everyone.
 
-Other stations still see an addressed message on their messenger screen; it's open amateur traffic.
+You don't need to add your own callsign; it's sent automatically. Other stations still see an addressed message
+on their screen, since it's open amateur traffic.
 
 ## Menu items
 
-* **MsgRx**: listen for messages (default ON)
-* **MsgRly**: relay other stations' messages (default ON). If this is OFF, your own messages go out with 0 hops,
-  so nobody relays them.
-* **MsgMod**: FSK450 / FSK700 / AFSK12. All radios on the net must use the same setting. FSK450 is the most robust;
-  AFSK12 (the default) is the fastest.
+* **MsgRx**: listen for messages (default ON).
+* **MsgRly**: relay other stations' messages (default ON). It also needs a callsign set. When OFF, your own
+  messages go out with 0 hops, so nobody relays them.
+* **MsgMod**: FSK450 / FSK700 / AFSK12. **All radios on the net must use the same setting.** FSK450 is the most
+  robust; AFSK12 (the default) is the fastest.
 
 ## Notes
 
-* Messages are only sent and received in **FM** mode. A VFO set to CW or USB refuses to send data.
-* For relay stations, set **BatSav OFF** (the receiver sleeps while saving power) and **DualW OFF**
-  (relays transmit on the TX VFO).
-* Messages hop at most 3 times (`MSG_MAX_HOPS` in `app/messenger.h`, maximum 7). Each radio shows and relays a
-  given message only once, and drops packets that carry no sender callsign.
-* Packet: 4-byte sync `30 72 57 6C`, header (type 5 bits + hops 3 bits), a 3-byte random id, the sender's callsign
-  (6 bytes), 3 path slots (6 bytes each), 30 bytes of text and a CRC-16/CCITT. That's 60 bytes in total.
-* Build without it: `make ENABLE_MESSENGER=0`. The result is byte-for-byte the same size as the original firmware.
+* Messages are only sent and received in **FM**. A VFO set to CW or USB won't send data.
+* Relay stations need **BatSav OFF**: the receiver sleeps while saving power and misses packets. They also need
+  **DualW OFF**: relays transmit on the TX VFO, which may not be where the message was heard.
+* To fit in flash, two features of the original build are off: the FM mic-level bar (`ENABLE_AUDIO_BAR`) and scan
+  ranges (`ENABLE_SCAN_RANGES`, which had no key to start it in this build). 61,304 of 61,440 bytes are used.
+* The callsign is stored in EEPROM at 0x0F48 and survives a factory reset.
+* The mesh follows the behaviour documented for kamilsss655's NUNU protocol. The code was written fresh because
+  NUNU itself is not open source, so it is **not** compatible with radios running the NUNU binary.
+
+## Technical details
+
+* Packet, 60 bytes after a 4-byte sync word `30 72 57 6C`:
+  header (type 5 bits + hops remaining 3 bits), 3-byte random ID, sender callsign (6), 3 route slots (6 each),
+  text (30), CRC-16/CCITT (2). Callsigns are ASCII, zero-padded.
+* Carrier sense: a random 40-103 ms backoff, repeated while squelch is open, for up to ~4 s. Relays add a further
+  150-915 ms random delay.
+* Maximum hops: `MSG_MAX_HOPS` in `app/messenger.h` (1-7). Changing it changes the packet size, so all radios
+  must match.
+* Build options: `ENABLE_MESSENGER` (on), `ENABLE_MESSENGER_FSK_MUTE` (on: don't play data bursts on the speaker).
+* The original firmware, exactly: `make ENABLE_MESSENGER=0 ENABLE_AUDIO_BAR=1 ENABLE_SCAN_RANGES=1`.
