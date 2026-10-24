@@ -5,6 +5,11 @@
 
 This repository builds on the egzumer codebase by adding a set of features specifically for CW operators.
 
+> ### 📡 This fork adds text messaging with mesh relaying
+> Press **F** then **MENU** to send short text messages to other radios running this firmware. Radios relay each
+> other's messages (up to 3 hops) to extend range, with no infrastructure. Plain text only, no encryption, for
+> amateur use. All CW features are kept. Setup, keys and menu items are in **[MESH.md](MESH.md)**.
+
 - High-speed RX/TX switching for realtime Morse code sending in true CW modulation
 - Automatic iambic keyer with A/B/Ultimatic/Bug modes
 - Internal paddle support with PTT/Side1 buttons
