@@ -149,13 +149,32 @@ on their screen, since it's open amateur traffic.
 * Messages are only sent and received in **FM**. A VFO set to CW or USB won't send data.
 * Relay stations need **BatSav OFF**: the receiver sleeps while saving power and misses packets. They also need
   **DualW OFF**: relays transmit on the TX VFO, which may not be where the message was heard.
-* To fit in flash, three features of the original build are off: the FM mic-level bar (`ENABLE_AUDIO_BAR`), scan
-  ranges (`ENABLE_SCAN_RANGES`, which had no key to start it in this build) and the hidden frequency-calibration
-  menu (`ENABLE_F_CAL_MENU`). 61,380 of 61,440 bytes are used.
+* Three features of NR7Y's build are turned off to make room; see
+  [What was removed to make room](#what-was-removed-to-make-room).
 * The callsign is stored in EEPROM at 0x0F48, and the messenger frequencies at 0x0EA4–0x0EA7. Both survive a
   factory reset.
 * The mesh follows the behaviour documented for kamilsss655's NUNU protocol. The code was written fresh because
   NUNU itself is not open source, so it is **not** compatible with radios running the NUNU binary.
+
+## What was removed to make room
+
+The UV-K5 V1 has 60 KB of program space, and NR7Y's build already used almost all of it. All CW features are
+kept. These three non-CW features were turned off:
+
+| Feature | What you lose | Bytes freed | Build option |
+|---|---|---|---|
+| FM mic-level bar | The bar showing your mic level while transmitting FM voice. It isn't used in CW. | 344 | `ENABLE_AUDIO_BAR` |
+| Scan ranges | Scanning only between the two VFO frequencies. In NR7Y's build the key that starts it (F + 5 in VFO mode) only works with VOX enabled, and VOX is off, so it couldn't be used anyway. | 128 | `ENABLE_SCAN_RANGES` |
+| Frequency-calibration menu | The hidden menu for trimming the radio's frequency calibration, usually used once. Calibration already stored in the radio is kept and still applied. | 172 | `ENABLE_F_CAL_MENU` |
+
+Nothing else was changed. 61,380 of 61,440 bytes are now used, leaving 60.
+
+**Getting them back:** to recalibrate, flash NR7Y's original firmware, use its calibration menu, then flash this
+one again (calibration is stored in the radio, not the firmware). With the messenger built in there's no room for
+any of them; even the smallest needs more than the 60 bytes left. To build without the messenger, use
+`make ENABLE_MESSENGER=0 ENABLE_AUDIO_BAR=1 ENABLE_SCAN_RANGES=1 ENABLE_F_CAL_MENU=1`, which is NR7Y's original.
+If you need room for something else, the next easiest feature to remove is copy-channel-to-VFO (long-press 1
+in channel mode, 124 bytes).
 
 ## Technical details
 

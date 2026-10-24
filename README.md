@@ -11,7 +11,8 @@ This repository builds on the egzumer codebase by adding a set of features speci
 > with no infrastructure. Like APRS, each message carries the sender's callsign and every relay's callsign, so you
 > can see the route. `@CALL` or `CALL DE` addresses a message to one station. Opens on a common messenger
 > frequency (145.670 / 446.670 MHz by default, changeable per band). Plain text only, no encryption,
-> for amateur use. All CW features are kept. Tested in a simulator, not yet on the air.
+> for amateur use. All CW features are kept; three small non-CW features were turned off to make room
+> ([list](MESH.md#what-was-removed-to-make-room)). Tested in a simulator, not yet on the air.
 > **How it works, setup, keys and menus: [MESH.md](MESH.md)**
 
 - High-speed RX/TX switching for realtime Morse code sending in true CW modulation
@@ -32,6 +33,10 @@ To make room for the CW features, some of the egzumer mods and radio functions h
 
 - _disabled_ FM broadcast radio, DTMF dialing/contacts, VOX, NOAA, Air Copy, TX audio bar, low-level backlight, Spectrum
 - Most of these are removed to save program flash space. DTMF contacts are removed specifically to reuse that section of eeprom to store CW message text
+- _also disabled in this fork, to make room for the messenger_: the hidden frequency-calibration menu, scan ranges
+  (which had no key to start them in this build), and the FM mic-level bar shown while transmitting. The list
+  above names a "TX audio bar", but NR7Y's build had it switched on. See
+  [MESH.md](MESH.md#what-was-removed-to-make-room).
 
 This code continues to be available under the Apache 2.0 license.
 
