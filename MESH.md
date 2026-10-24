@@ -5,7 +5,10 @@ Send short text messages between UV-K5 radios running this firmware. Radios pass
 message carries the sender's callsign and the callsign of each relay, so you can see how it got to you. You can
 type messages on the keypad or key them in CW.
 
-All of NR7Y's CW features are kept. Messages are plain text, with **no encryption**.
+NR7Y's CW features (keyer, macros, code practice, paddle support) all still work. Not everything in his build
+survived: three other features were turned off to make room (see
+[What was removed to make room](#what-was-removed-to-make-room)), and **F then MENU** now opens the messenger
+instead of the menu. Messages are plain text, with **no encryption**.
 
 > **Status: tested in a simulator, not yet on the air.** The protocol and screen logic pass an automated test
 > suite against a simulated radio chip, but real RF behaviour (timing, levels, collisions) is still to be proven.
@@ -158,8 +161,8 @@ on their screen, since it's open amateur traffic.
 
 ## What was removed to make room
 
-The UV-K5 V1 has 60 KB of program space, and NR7Y's build already used almost all of it. All CW features are
-kept. These three non-CW features were turned off:
+The UV-K5 V1 has 60 KB of program space, and NR7Y's build already used almost all of it. To fit the messenger,
+three features of his build, inherited from the egzumer firmware, were turned off. They're gone from this build:
 
 | Feature | What you lose | Bytes freed | Build option |
 |---|---|---|---|
@@ -167,7 +170,9 @@ kept. These three non-CW features were turned off:
 | Scan ranges | Scanning only between the two VFO frequencies. In NR7Y's build the key that starts it (F + 5 in VFO mode) only works with VOX enabled, and VOX is off, so it couldn't be used anyway. | 128 | `ENABLE_SCAN_RANGES` |
 | Frequency-calibration menu | The hidden menu for trimming the radio's frequency calibration, usually used once. Calibration already stored in the radio is kept and still applied. | 172 | `ENABLE_F_CAL_MENU` |
 
-Nothing else was changed. 61,380 of 61,440 bytes are now used, leaving 60.
+Nothing else was removed. One existing key changed meaning: **F then MENU** used to open the menu (the same as
+MENU on its own) and now opens the messenger. NR7Y's CW features (keyer, macros, code practice, paddle support)
+all still work. 61,380 of 61,440 bytes are now used, leaving 60.
 
 **Getting them back:** to recalibrate, flash NR7Y's original firmware, use its calibration menu, then flash this
 one again (calibration is stored in the radio, not the firmware). With the messenger built in there's no room for

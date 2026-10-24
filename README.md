@@ -11,8 +11,8 @@ This repository builds on the egzumer codebase by adding a set of features speci
 > with no infrastructure. Like APRS, each message carries the sender's callsign and every relay's callsign, so you
 > can see the route. `@CALL` or `CALL DE` addresses a message to one station. Opens on a common messenger
 > frequency (145.670 / 446.670 MHz by default, changeable per band). Plain text only, no encryption,
-> for amateur use. All CW features are kept; three small non-CW features were turned off to make room
-> ([list](MESH.md#what-was-removed-to-make-room)). Tested in a simulator, not yet on the air.
+> for amateur use. NR7Y's CW features all still work, but three other features of his build were turned off to
+> make room ([list](MESH.md#what-was-removed-to-make-room)), and F + MENU now opens the messenger. Tested in a simulator, not yet on the air.
 > **How it works, setup, keys and menus: [MESH.md](MESH.md)**
 
 - High-speed RX/TX switching for realtime Morse code sending in true CW modulation
