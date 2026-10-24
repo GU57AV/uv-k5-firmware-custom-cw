@@ -23,6 +23,7 @@
 enum {
 	MSG_PAYLOAD_LEN = 30,   // max 29 characters + terminator
 	MSG_ID_LEN      = 3,    // random message id, used to drop duplicates
+	MSG_CALL_LEN    = 6,    // callsign, NUL padded (not terminated when 6 long)
 	MSG_MAX_HOPS    = 3,    // relays a message may pass through (1..7)
 	MSG_HISTORY     = 3     // messages kept on screen
 };
@@ -36,15 +37,27 @@ typedef enum {
 #define MSG_HDR_TYPE(h)       ((h) & 0x1F)
 #define MSG_HDR_HOPS(h)       ((h) >> 5)
 
+// APRS-style: the originator's callsign plus the callsign of every relay,
+// each relay filling the next empty path slot as it passes the message on.
 typedef union {
 	struct {
 		uint8_t  header;
 		uint8_t  id[MSG_ID_LEN];
+		char     src[MSG_CALL_LEN];
+		char     path[MSG_MAX_HOPS][MSG_CALL_LEN];
 		char     payload[MSG_PAYLOAD_LEN];
 		uint16_t crc;                     // CRC16-CCITT over everything before it
 	} __attribute__((packed)) d;
-	uint8_t raw[36];                      // must stay an even number of bytes
+	uint8_t raw[1 + MSG_ID_LEN + MSG_CALL_LEN * (1 + MSG_MAX_HOPS) + MSG_PAYLOAD_LEN + 2];
 } MeshPacket;
+
+// one message as kept for the screen
+typedef struct {
+	char kind;                                // '<' received, '>' sent, '+' sent and heard relayed
+	char src[MSG_CALL_LEN];
+	char path[MSG_MAX_HOPS][MSG_CALL_LEN];    // route it took (for '+': who relayed ours)
+	char text[MSG_PAYLOAD_LEN];
+} MsgEntry;
 
 typedef enum {
 	MOD_FSK_450,    // most robust, slowest
@@ -67,8 +80,10 @@ typedef union {
 extern uint8_t hasNewMessage;
 extern uint8_t gMsgKeyTick;
 extern char    gMsgInput[MSG_PAYLOAD_LEN];
-extern char    gMsgLines[MSG_HISTORY][MSG_PAYLOAD_LEN + 2];
+extern MsgEntry gMsgLog[MSG_HISTORY];      // [MSG_HISTORY-1] is the newest
+extern char    gMsgMyCall[MSG_CALL_LEN];
 extern uint8_t gMsgKbd;
+extern uint8_t gMsgView;                   // 0 = list, n = route of the n-th newest message
 
 void MSG_Init(void);
 void MSG_EnableRX(bool enable);

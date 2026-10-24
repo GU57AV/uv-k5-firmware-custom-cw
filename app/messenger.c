@@ -11,9 +11,13 @@
  *   - CRC check, corrupted packets are never relayed
  *   - "give and take": a station that does not relay sends with 0 hops,
  *     so only relaying stations get their own messages relayed
- * Additions: a random message id so each station shows and relays a given
- * message once, and an implicit delivery mark: when we hear a neighbour
- * relay our own message, the '>' in front of it turns into '+'.
+ * Additions:
+ *   - APRS-style path: every packet carries the originator's callsign and
+ *     each relay writes its own callsign into the next path slot, so the
+ *     receiver sees the route (and every station identifies itself)
+ *   - a random message id so each station shows and relays a message once
+ *   - implicit delivery mark: when we hear a neighbour relay our own
+ *     message, '>' turns into '+' and we record who relayed it
  *
  * There is deliberately NO encryption (amateur radio rules).
  *
@@ -29,6 +33,7 @@
 #include "audio.h"
 #include "driver/bk4819.h"
 #include "driver/crc.h"
+#include "driver/eeprom.h"
 #include "driver/system.h"
 #include "functions.h"
 #include "misc.h"
@@ -39,15 +44,19 @@
 #define NEXT_CHAR_DELAY  100     // 10 ms ticks: pause after which the same key starts a new letter
 #define CRC_LEN          (sizeof(MeshPacket) - 2)
 #define SEEN_SIZE        8
+#define EEPROM_MYCALL    0x0F48  // 8 bytes, unused by the rest of the firmware, kept on reset
 
-_Static_assert(sizeof(MeshPacket) == 36, "packet layout");
+_Static_assert(sizeof(MeshPacket) == 60, "packet layout");
+_Static_assert((sizeof(MeshPacket) & 1) == 0, "FIFO is 16 bit");
 _Static_assert(MSG_MAX_HOPS >= 1 && MSG_MAX_HOPS <= 7, "hop field is 3 bits");
 
-uint8_t hasNewMessage;
-uint8_t gMsgKeyTick;
-uint8_t gMsgKbd;                                   // 0 = ABC, 1 = abc, 2 = 123
-char    gMsgInput[MSG_PAYLOAD_LEN];
-char    gMsgLines[MSG_HISTORY][MSG_PAYLOAD_LEN + 2];
+uint8_t  hasNewMessage;
+uint8_t  gMsgKeyTick;
+uint8_t  gMsgKbd;                                  // 0 = ABC, 1 = abc, 2 = 123
+uint8_t  gMsgView;
+char     gMsgInput[MSG_PAYLOAD_LEN];
+char     gMsgMyCall[MSG_CALL_LEN];
+MsgEntry gMsgLog[MSG_HISTORY];
 
 static char       s_lastSent[MSG_PAYLOAD_LEN];
 static uint8_t    s_cursor;
@@ -58,7 +67,7 @@ static MeshPacket s_pkt;
 static uint8_t    s_seen[SEEN_SIZE][MSG_ID_LEN];
 static uint8_t    s_seenPos;
 static uint8_t    s_sentId[MSG_ID_LEN];
-static uint8_t    s_sentLine = 0xFF;               // line showing our last sent message
+static uint8_t    s_sentLine = 0xFF;               // log entry holding our last sent message
 static uint32_t   s_rng = 0x2545F491u;
 
 static const char *const T9[9] = {
@@ -87,23 +96,34 @@ static bool SeenBefore(const uint8_t *id)
 	return false;
 }
 
-static void AddLine(char prefix, const char *text)
+static MsgEntry *NewEntry(char kind)
 {
-	memmove(gMsgLines[0], gMsgLines[1], sizeof(gMsgLines[0]) * (MSG_HISTORY - 1));
-	gMsgLines[MSG_HISTORY - 1][0] = prefix;
-	strncpy(gMsgLines[MSG_HISTORY - 1] + 1, text, MSG_PAYLOAD_LEN);
-	gMsgLines[MSG_HISTORY - 1][MSG_PAYLOAD_LEN + 1] = 0;
+	memmove(&gMsgLog[0], &gMsgLog[1], sizeof(MsgEntry) * (MSG_HISTORY - 1));
+	MsgEntry *e = &gMsgLog[MSG_HISTORY - 1];
+	memset(e, 0, sizeof(*e));
+	e->kind = kind;
 
 	if (s_sentLine < MSG_HISTORY)
 		s_sentLine = s_sentLine ? s_sentLine - 1 : 0xFF;
 
 	gUpdateDisplay = true;
+	return e;
 }
 
 static void SealPacket(uint8_t hops)
 {
 	s_pkt.d.header = MSG_HDR(MSG_TYPE_TEXT, hops);
 	s_pkt.d.crc    = CRC_Calculate(s_pkt.raw, CRC_LEN);
+}
+
+static void SetMyCall(const char *s)
+{	// first word of the input, up to 6 characters (type it in ABC mode)
+	uint8_t buf[8];
+	memset(buf, 0, sizeof(buf));
+	for (unsigned i = 0; i < MSG_CALL_LEN && s[i] > ' '; i++)
+		buf[i] = s[i];
+	memcpy(gMsgMyCall, buf, MSG_CALL_LEN);
+	EEPROM_WriteBuffer(EEPROM_MYCALL, buf);
 }
 
 // ---------------------------------------------------------------- modem
@@ -181,8 +201,8 @@ static void SendFSK(void)
 
 	BK4819_WriteRegister(BK4819_REG_59, BK4819_ReadRegister(BK4819_REG_59) | (1u << 11));
 
-	// wait up to 1 s for "TX finished"
-	for (unsigned t = 0; t < 200; t++) {
+	// wait up to 1.5 s for "TX finished"
+	for (unsigned t = 0; t < 300; t++) {
 		SYSTEM_DelayMs(5);
 		if (BK4819_ReadRegister(BK4819_REG_0C) & 1u) {
 			BK4819_WriteRegister(BK4819_REG_02, 0);
@@ -230,33 +250,47 @@ static bool Transmit(void)
 static void HandleReceive(void)
 {
 	if (CRC_Calculate(s_pkt.raw, CRC_LEN) != s_pkt.d.crc ||
-	    MSG_HDR_TYPE(s_pkt.d.header) != MSG_TYPE_TEXT)
-		return;                                   // corrupted or not ours: never relay
+	    MSG_HDR_TYPE(s_pkt.d.header) != MSG_TYPE_TEXT ||
+	    s_pkt.d.src[0] == 0)
+		return;                                   // corrupted, not ours, or anonymous: drop
 
 	s_pkt.d.payload[MSG_PAYLOAD_LEN - 1] = 0;
 
 	if (SeenBefore(s_pkt.d.id)) {
-		// a neighbour relaying our own message = it got out
-		if (s_sentLine < MSG_HISTORY && memcmp(s_pkt.d.id, s_sentId, MSG_ID_LEN) == 0) {
-			gMsgLines[s_sentLine][0] = '+';
+		// a neighbour relaying our own message = it got out; remember who did
+		if (s_sentLine < MSG_HISTORY && memcmp(s_pkt.d.id, s_sentId, MSG_ID_LEN) == 0 &&
+		    gMsgLog[s_sentLine].kind == '>') {
+			gMsgLog[s_sentLine].kind = '+';
+			memcpy(gMsgLog[s_sentLine].path, s_pkt.d.path, sizeof(s_pkt.d.path));
 			gUpdateDisplay = true;
 		}
 		return;
 	}
 
-	AddLine('<', s_pkt.d.payload);
+	MsgEntry *e = NewEntry('<');
+	memcpy(e->src,  s_pkt.d.src,     sizeof(e->src));
+	memcpy(e->path, s_pkt.d.path,    sizeof(e->path));
+	memcpy(e->text, s_pkt.d.payload, sizeof(e->text));
 
 	if (gScreenToDisplay != DISPLAY_MSG) {
 		hasNewMessage = 1;
 		gUpdateStatus = true;
 	}
 
+	// relay: only with hops left, a free path slot, and our own callsign to put in it
 	const uint8_t hops = MSG_HDR_HOPS(s_pkt.d.header);
-	if (gEeprom.MESSENGER_CONFIG.data.relay && hops > 0) {
-		SealPacket(hops - 1);
-		// extra spread so several relays that heard the same packet don't key up together
-		SYSTEM_DelayMs(150 + 3u * Rand());
-		Transmit();
+	if (!gEeprom.MESSENGER_CONFIG.data.relay || hops == 0 || gMsgMyCall[0] == 0)
+		return;
+
+	for (unsigned i = 0; i < MSG_MAX_HOPS; i++) {
+		if (s_pkt.d.path[i][0] == 0) {
+			memcpy(s_pkt.d.path[i], gMsgMyCall, MSG_CALL_LEN);
+			SealPacket(hops - 1);
+			// extra spread so several relays that heard the same packet don't key up together
+			SYSTEM_DelayMs(150 + 3u * Rand());
+			Transmit();
+			return;
+		}
 	}
 }
 
@@ -283,8 +317,7 @@ void MSG_StorePacket(uint16_t irq)
 
 	if (irq & BK4819_REG_02_FSK_RX_FINISHED) {
 		BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
-		BK4819_WriteRegister(BK4819_REG_59, BK4819_ReadRegister(BK4819_REG_59) | (1u << 15) | (1u << 14));
-		BK4819_WriteRegister(BK4819_REG_59, BK4819_ReadRegister(BK4819_REG_59) | (1u << 12));
+		MSG_EnableRX(true);                       // clear the FIFO and listen again
 		const bool full = s_receiving && gFSKWriteIndex >= sizeof(s_pkt.raw);
 		s_receiving    = false;
 		gFSKWriteIndex = 0;
@@ -297,7 +330,7 @@ void MSG_StorePacket(uint16_t irq)
 
 static void Send(void)
 {
-	if (gMsgInput[0] == 0) {
+	if (gMsgInput[0] == 0 || gMsgMyCall[0] == 0) {   // nothing to send / no callsign set
 		gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
 		return;
 	}
@@ -307,6 +340,7 @@ static void Send(void)
 		s_pkt.d.id[i] = Rand();
 	SeenBefore(s_pkt.d.id);                       // so our own echoes are recognised
 	memcpy(s_sentId, s_pkt.d.id, MSG_ID_LEN);
+	memcpy(s_pkt.d.src, gMsgMyCall, MSG_CALL_LEN);
 	strncpy(s_pkt.d.payload, gMsgInput, MSG_PAYLOAD_LEN - 1);
 
 	// give and take: only stations that relay ask to be relayed
@@ -317,7 +351,9 @@ static void Send(void)
 		return;
 	}
 
-	AddLine('>', gMsgInput);
+	MsgEntry *e = NewEntry('>');
+	memcpy(e->src,  gMsgMyCall, sizeof(e->src));
+	memcpy(e->text, gMsgInput,  sizeof(e->text));
 	s_sentLine = MSG_HISTORY - 1;
 	memcpy(s_lastSent, gMsgInput, sizeof(s_lastSent));
 	memset(gMsgInput, 0, sizeof(gMsgInput));
@@ -326,11 +362,16 @@ static void Send(void)
 
 void MSG_Init(void)
 {
-	memset(gMsgLines, 0, sizeof(gMsgLines));
+	memset(gMsgLog, 0, sizeof(gMsgLog));
 	memset(gMsgInput, 0, sizeof(gMsgInput));
 	s_cursor = s_prevKey = s_prevLetter = 0;
 	s_sentLine    = 0xFF;
 	hasNewMessage = 0;
+	gMsgView      = 0;
+
+	EEPROM_ReadBuffer(EEPROM_MYCALL, gMsgMyCall, MSG_CALL_LEN);
+	if ((uint8_t)gMsgMyCall[0] == 0xFF)           // never set
+		memset(gMsgMyCall, 0, sizeof(gMsgMyCall));
 }
 
 // ---------------------------------------------------------------- keys
@@ -381,12 +422,23 @@ void MSG_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 	if (bKeyHeld) {
 		if (bKeyPressed && Key == KEY_F)          // long F: clear the line
 			memset(gMsgInput, 0, sizeof(gMsgInput)), s_cursor = s_prevKey = 0;
-		gUpdateDisplay = true;
+		if (bKeyPressed && Key == KEY_MENU && gMsgInput[0]) {
+			SetMyCall(gMsgInput);                 // long MENU: typed text becomes my callsign
+			memset(gMsgInput, 0, sizeof(gMsgInput)), s_cursor = s_prevKey = 0;
+			gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
+		}
+		gUpdateDisplay = true;                    // (the release after a hold also lands here)
 		return;
 	}
 
 	if (bKeyPressed)
 		return;                                   // act on release
+
+	if (gMsgView && Key != KEY_DOWN) {            // route view: DOWN = older, anything else = back
+		gMsgView = 0;
+		gUpdateDisplay = true;
+		return;
+	}
 
 	switch (Key) {
 		case KEY_0 ... KEY_9:
@@ -405,6 +457,12 @@ void MSG_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			memcpy(gMsgInput, s_lastSent, sizeof(gMsgInput));
 			s_cursor  = strlen(gMsgInput);
 			s_prevKey = 0;
+			break;
+		case KEY_DOWN:                            // route of the newest, then older messages
+			while (++gMsgView <= MSG_HISTORY && gMsgLog[MSG_HISTORY - gMsgView].kind == 0)
+				;
+			if (gMsgView > MSG_HISTORY)
+				gMsgView = 0;                     // past the oldest: back to the list
 			break;
 		case KEY_MENU:
 			Send();
