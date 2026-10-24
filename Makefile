@@ -44,6 +44,8 @@ ENABLE_CW_MODULATOR           ?= 1
 ENABLE_CODE_PRACTICE          ?= 1
 ENABLE_MILLIS                 ?= 0
 ENABLE_EXTRA_FILTER           ?= 1
+ENABLE_MESSENGER              ?= 1
+ENABLE_MESSENGER_FSK_MUTE     ?= 1
 
 # ---- DEBUGGING ----
 ENABLE_AM_FIX_SHOW_DATA       ?= 0
@@ -111,7 +113,7 @@ ifeq ($(ENABLE_FMRADIO),1)
 	OBJS += driver/bk1080.o
 endif
 OBJS += driver/bk4819.o
-ifeq ($(filter $(ENABLE_AIRCOPY) $(ENABLE_UART),1),1)
+ifeq ($(filter $(ENABLE_AIRCOPY) $(ENABLE_UART) $(ENABLE_MESSENGER),1),1)
 	OBJS += driver/crc.o
 endif
 OBJS += driver/eeprom.o
@@ -200,6 +202,10 @@ OBJS += ui/menu.o
 OBJS += ui/scanner.o
 ifeq ($(ENABLE_CODE_PRACTICE),1)
 	OBJS += ui/cpo.o
+endif
+ifeq ($(ENABLE_MESSENGER),1)
+	OBJS += app/messenger.o
+	OBJS += ui/messenger.o
 endif
 OBJS += ui/status.o
 OBJS += ui/ui.o
@@ -405,6 +411,12 @@ ifeq ($(ENABLE_CW_MODULATOR),1)
 endif
 ifeq ($(ENABLE_CODE_PRACTICE),1)
 	CFLAGS  += -DENABLE_CODE_PRACTICE
+endif
+ifeq ($(ENABLE_MESSENGER),1)
+	CFLAGS  += -DENABLE_MESSENGER
+endif
+ifeq ($(ENABLE_MESSENGER_FSK_MUTE),1)
+	CFLAGS  += -DENABLE_MESSENGER_FSK_MUTE
 endif
 ifeq ($(ENABLE_MILLIS),1)
 	CFLAGS  += -DENABLE_MILLIS

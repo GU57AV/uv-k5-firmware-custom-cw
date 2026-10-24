@@ -118,6 +118,11 @@ const t_menu_item MenuList[] =
 	{"D List", VOICE_ID_INVALID,                       MENU_D_LIST        },
 #endif
 	{"D Live", VOICE_ID_INVALID,                       MENU_D_LIVE_DEC    }, // live DTMF decoder
+#ifdef ENABLE_MESSENGER
+	{"MsgRx",  VOICE_ID_INVALID,                       MENU_MSG_RX        }, // listen for text messages
+	{"MsgRly", VOICE_ID_INVALID,                       MENU_MSG_RELAY     }, // relay (mesh) for others
+	{"MsgMod", VOICE_ID_INVALID,                       MENU_MSG_MOD       }, // data modulation
+#endif
 #ifdef ENABLE_AM_FIX
 	{"AM Fix", VOICE_ID_INVALID,                       MENU_AM_FIX        },
 #endif
@@ -323,6 +328,15 @@ const char gSubMenu_BACKLIGHT[][7] =
 	"4 min",
 	"ON"
 };
+
+#ifdef ENABLE_MESSENGER
+const char gSubMenu_MSG_MOD[][7] =
+{
+	"FSK450",
+	"FSK700",
+	"AFSK12"
+};
+#endif
 
 const char gSubMenu_RX_TX[][6] =
 {
@@ -694,6 +708,10 @@ void UI_DisplayMenu(void)
 		case MENU_D_DCD:
 #endif
 		case MENU_D_LIVE_DEC:
+#ifdef ENABLE_MESSENGER
+		case MENU_MSG_RX:
+		case MENU_MSG_RELAY:
+#endif
 		#ifdef ENABLE_NOAA
 			case MENU_NOAA_S:
 		#endif
@@ -704,6 +722,12 @@ void UI_DisplayMenu(void)
 		case MENU_SCREN:
 			strcpy(String, gSubMenu_OFF_ON[gSubMenuSelection]);
 			break;
+
+#ifdef ENABLE_MESSENGER
+		case MENU_MSG_MOD:
+			strcpy(String, gSubMenu_MSG_MOD[gSubMenuSelection]);
+			break;
+#endif
 
 		case MENU_MEM_CH:
 		case MENU_1_CALL:

@@ -39,6 +39,9 @@
 	#include "ui/cpo.h"
 #endif
 #include "../misc.h"
+#ifdef ENABLE_MESSENGER
+	#include "ui/messenger.h"
+#endif
 
 GUI_DisplayType_t gScreenToDisplay;
 GUI_DisplayType_t gRequestDisplayScreen = DISPLAY_INVALID;
@@ -63,6 +66,10 @@ void (*UI_DisplayFunctions[])(void) = {
 
 #ifdef ENABLE_AIRCOPY
 	[DISPLAY_AIRCOPY] = &UI_DisplayAircopy,
+#endif
+
+#ifdef ENABLE_MESSENGER
+	[DISPLAY_MSG] = &UI_DisplayMSG,
 #endif
 };
 

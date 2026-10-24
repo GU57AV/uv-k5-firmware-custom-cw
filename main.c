@@ -26,6 +26,9 @@
 #include "board.h"
 #include "misc.h"
 #include "radio.h"
+#ifdef ENABLE_MESSENGER
+	#include "app/messenger.h"
+#endif
 #include "settings.h"
 #include "version.h"
 
@@ -132,6 +135,10 @@ void Main(void)
 		BOARD_ADC_GetBatteryInfo(&gBatteryVoltages[i], &gBatteryCurrent);
 
 	BATTERY_GetReadings(false);
+
+#ifdef ENABLE_MESSENGER
+	MSG_Init();
+#endif
 
 #ifdef ENABLE_AM_FIX
 	AM_fix_init();

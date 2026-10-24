@@ -24,6 +24,9 @@
 #include <helper/battery.h>
 #include "radio.h"
 #include <driver/backlight.h>
+#ifdef ENABLE_MESSENGER
+	#include "app/messenger.h"
+#endif
 
 enum POWER_OnDisplayMode_t {
 	POWER_ON_DISPLAY_MODE_FULL_SCREEN = 0,
@@ -308,6 +311,9 @@ typedef struct {
 #endif
 	uint8_t               BACKLIGHT_MAX;
 	BATTERY_Type_t		  BATTERY_TYPE;
+#ifdef ENABLE_MESSENGER
+	MessengerConfig       MESSENGER_CONFIG;
+#endif
 #ifdef ENABLE_RSSI_BAR
 	uint8_t               S0_LEVEL;
 	uint8_t               S9_LEVEL;

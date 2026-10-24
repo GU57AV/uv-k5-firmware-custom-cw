@@ -96,6 +96,11 @@ enum
 	MENU_D_LIST,
 #endif
 	MENU_D_LIVE_DEC,
+#ifdef ENABLE_MESSENGER
+	MENU_MSG_RX,
+	MENU_MSG_RELAY,
+	MENU_MSG_MOD,
+#endif
 	MENU_PONMSG,
 	MENU_ROGER,
 	MENU_VOL,
@@ -175,6 +180,9 @@ extern const char        gSubMenu_RESET[2][4];
 extern const char* const gSubMenu_F_LOCK[F_LOCK_LEN];
 extern const char        gSubMenu_BACKLIGHT[8][7];
 extern const char        gSubMenu_RX_TX[4][6];
+#ifdef ENABLE_MESSENGER
+extern const char        gSubMenu_MSG_MOD[3][7];
+#endif
 extern const char        gSubMenu_BAT_TXT[3][8];
 extern const char 		 gSubMenu_BATTYP[2][9];
 extern const char        gSubMenu_SCRAMBLER[11][7];

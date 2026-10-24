@@ -80,6 +80,9 @@
 
 
 #include "driver/uart.h"
+#ifdef ENABLE_MESSENGER
+	#include "app/messenger.h"
+#endif
 static bool flagSaveVfo;
 static bool flagSaveSettings;
 static bool flagSaveChannel;
@@ -102,6 +105,10 @@ void (*ProcessKeysFunctions[])(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld) 
 
 #ifdef ENABLE_AIRCOPY
 	[DISPLAY_AIRCOPY] = &AIRCOPY_ProcessKeys,
+#endif
+
+#ifdef ENABLE_MESSENGER
+	[DISPLAY_MSG] = &MSG_ProcessKeys,
 #endif
 };
 
@@ -739,6 +746,11 @@ static void CheckRadioInterrupts(void)
 			AIRCOPY_StorePacket();
 		}
 #endif
+
+#ifdef ENABLE_MESSENGER
+		if (interrupts.fskRxSync || interrupts.fskFifoAlmostFull || interrupts.fskRxFinied)
+			MSG_StorePacket(interrupts.__raw);
+#endif
 	}
 }
 
@@ -1135,6 +1147,10 @@ void APP_TimeSlice10ms(void)
 {
 	gNextTimeslice = false;
 	gFlashLightBlinkCounter++;
+#ifdef ENABLE_MESSENGER
+	if (gMsgKeyTick < 255)
+		gMsgKeyTick++;
+#endif
 
 #ifdef ENABLE_BOOT_BEEPS
 	if (boot_counter_10ms > 0 && (boot_counter_10ms % 25) == 0) {
@@ -1327,6 +1343,13 @@ void APP_TimeSlice500ms(void)
 {
 	gNextTimeslice_500ms = false;
 	bool exit_menu = false;
+
+#ifdef ENABLE_MESSENGER
+	if (hasNewMessage == 1 && !FUNCTION_IsRx() && gCurrentFunction != FUNCTION_TRANSMIT) {
+		hasNewMessage = 2;           // new message: beep once, when the beep can be heard
+		AUDIO_PlayBeep(BEEP_880HZ_200MS);
+	}
+#endif
 
 	// Skipped authentic device check
 

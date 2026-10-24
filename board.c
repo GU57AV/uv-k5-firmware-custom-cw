@@ -502,7 +502,7 @@ void BOARD_Init(void)
 	BK1080_Init0();
 #endif
 
-#if defined(ENABLE_UART) || defined(ENABLED_AIRCOPY)
+#if defined(ENABLE_UART) || defined(ENABLED_AIRCOPY) || defined(ENABLE_MESSENGER)
 	CRC_Init();
 #endif
 

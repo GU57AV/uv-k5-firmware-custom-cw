@@ -34,6 +34,9 @@
 #include "ui/helper.h"
 #include "ui/ui.h"
 #include "ui/status.h"
+#ifdef ENABLE_MESSENGER
+	#include "app/messenger.h"
+#endif
 
 void UI_DisplayStatus()
 {
@@ -95,6 +98,12 @@ void UI_DisplayStatus()
 			UI_PrintStringSmallBufferNormal(s, line + x + 1);
 			x1 = x + 10;
 		}
+#ifdef ENABLE_MESSENGER
+		else if (hasNewMessage) {        // unread message
+			memcpy(line + x, BITMAP_NEWMSG, sizeof(BITMAP_NEWMSG));
+			x1 = x + sizeof(BITMAP_NEWMSG);
+		}
+#endif
 	}
 	x += 10;  // font character width
 

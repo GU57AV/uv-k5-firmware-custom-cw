@@ -252,6 +252,10 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
 		case MENU_D_DCD:
 #endif
 		case MENU_D_LIVE_DEC:
+#ifdef ENABLE_MESSENGER
+		case MENU_MSG_RX:
+		case MENU_MSG_RELAY:
+#endif
 		#ifdef ENABLE_NOAA
 			case MENU_NOAA_S:
 		#endif
@@ -263,6 +267,13 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
 			*pMin = 0;
 			*pMax = ARRAY_SIZE(gSubMenu_OFF_ON) - 1;
 			break;
+
+#ifdef ENABLE_MESSENGER
+		case MENU_MSG_MOD:
+			*pMin = 0;
+			*pMax = ARRAY_SIZE(gSubMenu_MSG_MOD) - 1;
+			break;
+#endif
 
 		case MENU_AM:
 			*pMin = 0;
@@ -660,6 +671,22 @@ void MENU_AcceptSetting(void)
 		case MENU_STE:
 			gEeprom.TAIL_TONE_ELIMINATION = gSubMenuSelection;
 			break;
+
+#ifdef ENABLE_MESSENGER
+		case MENU_MSG_RX:
+			gEeprom.MESSENGER_CONFIG.data.receive = gSubMenuSelection;
+			gFlagReconfigureVfos = true;          // arm / disarm the FSK receiver
+			break;
+
+		case MENU_MSG_RELAY:
+			gEeprom.MESSENGER_CONFIG.data.relay = gSubMenuSelection;
+			break;
+
+		case MENU_MSG_MOD:
+			gEeprom.MESSENGER_CONFIG.data.modulation = gSubMenuSelection;
+			gFlagReconfigureVfos = true;
+			break;
+#endif
 
 		case MENU_RP_STE:
 			gEeprom.REPEATER_TAIL_TONE_ELIMINATION = gSubMenuSelection;
@@ -1252,6 +1279,20 @@ void MENU_ShowCurrentSetting(void)
 		case MENU_D_LIVE_DEC:
 			gSubMenuSelection = gSetting_live_DTMF_decoder;
 			break;
+
+#ifdef ENABLE_MESSENGER
+		case MENU_MSG_RX:
+			gSubMenuSelection = gEeprom.MESSENGER_CONFIG.data.receive;
+			break;
+
+		case MENU_MSG_RELAY:
+			gSubMenuSelection = gEeprom.MESSENGER_CONFIG.data.relay;
+			break;
+
+		case MENU_MSG_MOD:
+			gSubMenuSelection = gEeprom.MESSENGER_CONFIG.data.modulation;
+			break;
+#endif
 
 		case MENU_PONMSG:
 			gSubMenuSelection = gEeprom.POWER_ON_DISPLAY_MODE;

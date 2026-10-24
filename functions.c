@@ -138,12 +138,19 @@ void FUNCTION_PowerSave() {
 
 	gUpdateStatus = true;
 
-	if (gScreenToDisplay != DISPLAY_MENU)     // 1of11 .. don't close the menu
+	if (gScreenToDisplay != DISPLAY_MENU     // 1of11 .. don't close the menu
+#ifdef ENABLE_MESSENGER
+		&& gScreenToDisplay != DISPLAY_MSG
+#endif
+	)
 		GUI_SelectNextDisplay(DISPLAY_MAIN);
 }
 
 void FUNCTION_Transmit()
 {
+#ifdef ENABLE_MESSENGER
+	MSG_EnableRX(false);
+#endif
 	// if DTMF is enabled when TX'ing, it changes the TX audio filtering !! .. 1of11
 	BK4819_DisableDTMF();
 

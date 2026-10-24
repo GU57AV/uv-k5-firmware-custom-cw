@@ -129,6 +129,12 @@ void SETTINGS_InitEEPROM(void)
 
 	// 0EA0..0EA7
 	EEPROM_ReadBuffer(0x0EA0, Data, 8);
+	#ifdef ENABLE_MESSENGER
+		// 0x0EA3: messenger config (0xFF on a fresh radio -> RX on, relay on, AFSK 1.2k)
+		gEeprom.MESSENGER_CONFIG.__val = Data[3];
+		if (gEeprom.MESSENGER_CONFIG.data.modulation > MOD_AFSK_1200)
+			gEeprom.MESSENGER_CONFIG.data.modulation = MOD_AFSK_1200;
+	#endif
 	#ifdef ENABLE_VOICE
 	gEeprom.VOICE_PROMPT = (Data[0] < 3) ? Data[0] : VOICE_PROMPT_ENGLISH;
 	#endif
@@ -546,6 +552,9 @@ void SETTINGS_SaveSettings(void)
 #ifdef ENABLE_RSSI_BAR
 	State[1] = gEeprom.S0_LEVEL;
 	State[2] = gEeprom.S9_LEVEL;
+#endif
+#ifdef ENABLE_MESSENGER
+	State[3] = gEeprom.MESSENGER_CONFIG.__val;
 #endif
 	EEPROM_WriteBuffer(0x0EA0, State);
 
