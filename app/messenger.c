@@ -28,6 +28,7 @@
 
 #include <string.h>
 
+#include "app/cwkeyer.h"
 #include "app/generic.h"
 #include "app/messenger.h"
 #include "audio.h"
@@ -54,6 +55,7 @@ uint8_t  hasNewMessage;
 uint8_t  gMsgKeyTick;
 uint8_t  gMsgKbd;                                  // 0 = ABC, 1 = abc, 2 = 123
 uint8_t  gMsgView;
+bool     gMsgCwEntry;
 char     gMsgInput[MSG_PAYLOAD_LEN];
 char     gMsgMyCall[MSG_CALL_LEN];
 MsgEntry gMsgLog[MSG_HISTORY];
@@ -247,6 +249,22 @@ static bool Transmit(void)
 
 // ---------------------------------------------------------------- receive
 
+// "@CALL ..." or "CALL DE ..." addresses a message (the second form can be keyed in CW).
+// True if it is addressed, and not to us.
+static bool ForSomeoneElse(const char *t)
+{
+	const char *a = t + (t[0] == '@');
+	unsigned    n = 0;
+	while (a[n] > ' ')
+		n++;
+	if (t[0] != '@' && !(a[n] == ' ' && a[n + 1] == 'D' && a[n + 2] == 'E' && a[n + 3] <= ' '))
+		return false;                             // not addressed: for everyone
+	if (!memcmp(a, "CQ ", 3) || !memcmp(a, "QST ", 4))
+		return false;                             // CQ / QST: for everyone
+	return n == 0 || n > MSG_CALL_LEN || memcmp(a, gMsgMyCall, n) != 0 ||
+	       (n < MSG_CALL_LEN && gMsgMyCall[n] != 0);
+}
+
 static void HandleReceive(void)
 {
 	if (CRC_Calculate(s_pkt.raw, CRC_LEN) != s_pkt.d.crc ||
@@ -272,7 +290,8 @@ static void HandleReceive(void)
 	memcpy(e->path, s_pkt.d.path,    sizeof(e->path));
 	memcpy(e->text, s_pkt.d.payload, sizeof(e->text));
 
-	if (gScreenToDisplay != DISPLAY_MSG) {
+	// a message addressed to another station is shown and relayed, but doesn't alert us
+	if (gScreenToDisplay != DISPLAY_MSG && !ForSomeoneElse(e->text)) {
 		hasNewMessage = 1;
 		gUpdateStatus = true;
 	}
@@ -374,6 +393,28 @@ void MSG_Init(void)
 		memset(gMsgMyCall, 0, sizeof(gMsgMyCall));
 }
 
+// ---------------------------------------------------------------- CW entry
+
+// Keyer runs local-only (sidetone, no RF) and the decoder types into the message.
+static void CwEntry(bool on)
+{
+	gMsgCwEntry = on;
+	CW_KeyerReconfigure(on || gTxVfo->Modulation == MODULATION_CW);
+	if (!on)
+		RADIO_SetupRegisters(true);               // undo the sidetone setup, re-arm the data receiver
+}
+
+void MSG_CwChar(char ch, bool space)
+{
+	if (space && s_cursor && s_cursor < MSG_PAYLOAD_LEN - 1)
+		gMsgInput[s_cursor++] = ' ';
+	if (s_cursor < MSG_PAYLOAD_LEN - 1)
+		gMsgInput[s_cursor++] = ch;
+	gMsgInput[s_cursor] = 0;
+	MSG_EnableRX(true);                           // sidetone borrowed the tone registers: listen again
+	gUpdateDisplay = true;
+}
+
 // ---------------------------------------------------------------- keys
 
 static void InsertChar(KEY_Code_t key)
@@ -444,8 +485,10 @@ void MSG_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		case KEY_0 ... KEY_9:
 			InsertChar(Key);
 			break;
-		case KEY_STAR:
-			gMsgKbd = (gMsgKbd + 1) % 3;
+		case KEY_STAR:                            // ABC -> abc -> 123 -> CW -> ABC
+			gMsgKbd = (gMsgKbd + 1) % 4;
+			if (gMsgKbd >= 3 || gMsgCwEntry)
+				CwEntry(gMsgKbd == 3);
 			s_prevKey = 0;
 			break;
 		case KEY_F:                               // backspace
@@ -468,6 +511,8 @@ void MSG_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			Send();
 			break;
 		case KEY_EXIT:
+			if (gMsgCwEntry)
+				CwEntry(false), gMsgKbd = 0;
 			gRequestDisplayScreen = DISPLAY_MAIN;
 			break;
 		default:

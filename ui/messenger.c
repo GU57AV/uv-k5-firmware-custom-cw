@@ -58,7 +58,7 @@ static void DisplayRoute(const MsgEntry *e)
 
 void UI_DisplayMSG(void)
 {
-	static const char kbd[3] = { 'A', 'a', '1' };
+	static const char kbd[4] = { 'A', 'a', '1', 'C' };
 	char line[MSG_CALL_LEN + MSG_PAYLOAD_LEN + 2];
 
 	UI_DisplayClear();

@@ -1984,7 +1984,11 @@ Skip:
 		RADIO_SelectVfos();
 
 #ifdef ENABLE_CW_MODULATOR
-		CW_KeyerReconfigure(gTxVfo->Modulation==MODULATION_CW);
+		CW_KeyerReconfigure(gTxVfo->Modulation==MODULATION_CW
+#ifdef ENABLE_MESSENGER
+			|| gMsgCwEntry
+#endif
+		);
 		gMonitor = (gRxVfo->Modulation == MODULATION_CW ||
 		            gRxVfo->Modulation == MODULATION_USB);
 #endif

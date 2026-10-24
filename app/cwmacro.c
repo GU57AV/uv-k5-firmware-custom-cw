@@ -17,6 +17,9 @@
  // CW Macro system implementation
 
 #include "app/cwmacro.h"
+#ifdef ENABLE_MESSENGER
+	#include "app/messenger.h"
+#endif
 #include "driver/eeprom.h"
 #include "driver/uart.h"
 #include "external/printf/printf.h"
@@ -418,6 +421,10 @@ void CW_EncoderProcessElement(CW_ElementType_t element)
 			}
 #endif
 			if (ch != 0 && CW_ValidateChar(ch)) {
+#ifdef ENABLE_MESSENGER
+				if (gMsgCwEntry)
+					MSG_CwChar(ch, s_encoder_space_pending);
+#endif
 				const bool can_update_display = !gCW_Recording || (gCW_RecordLength < CW_MACRO_MAX_LEN);
 #if CW_ENCODER_DEBUG
 				// Print decoded character for debug

@@ -83,12 +83,14 @@ extern char    gMsgInput[MSG_PAYLOAD_LEN];
 extern MsgEntry gMsgLog[MSG_HISTORY];      // [MSG_HISTORY-1] is the newest
 extern char    gMsgMyCall[MSG_CALL_LEN];
 extern uint8_t gMsgKbd;
-extern uint8_t gMsgView;                   // 0 = list, n = route of the n-th newest message
+extern uint8_t gMsgView;
+extern bool    gMsgCwEntry;                // keying text in with the paddle/key                   // 0 = list, n = route of the n-th newest message
 
 void MSG_Init(void);
 void MSG_EnableRX(bool enable);
 void MSG_StorePacket(uint16_t interrupt_bits);
 void MSG_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld);
+void MSG_CwChar(char ch, bool space);       // called by the CW decoder
 
 #endif
 #endif

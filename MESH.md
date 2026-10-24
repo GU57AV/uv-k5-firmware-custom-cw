@@ -1,7 +1,7 @@
 # Text messaging + mesh relay (NR7Y CW firmware, UV-K5 V1)
 
 Adds a T9 text messenger and simple mesh relaying to the NR7Y CW firmware. All CW features are kept.
-The build uses 61,388 of the 61,440 bytes of flash.
+The build uses 61,396 of the 61,440 bytes of flash. To make room, the FM mic-level bar (`ENABLE_AUDIO_BAR`) is off.
 
 Like APRS, every message carries the sender's callsign, and each relay adds its own callsign as it passes the
 message on. You can see exactly how a message reached you, and every station identifies itself in the data it sends.
@@ -18,13 +18,13 @@ There is **no encryption**: messages are plain text.
 |---|---|---|
 | Main screen | **F**, then **MENU** | open messenger |
 | Messenger | 0-9 | T9 entry (tap a key repeatedly to cycle letters; 0 = space) |
-| | \* | switch case/mode: `A` upper, `a` lower, `1` digits |
+| | \* | switch entry mode: `A` upper, `a` lower, `1` digits, `C` **CW** (key the message with your paddle or key) |
 | | F / hold F | backspace / clear the line |
 | | UP | recall the last message you sent |
 | | DOWN | show the route of the newest message; DOWN again for older ones, any other key to go back |
 | | hold MENU | save what you've typed as **your callsign** (type it in `A` mode; up to 6 characters) |
 | | MENU | send |
-| | PTT | voice as normal (you stay on the messenger screen) |
+| | PTT | voice as normal (you stay on the messenger screen); in `C` mode PTT/side keys are your paddles |
 | | EXIT | back to the main screen |
 
 **Set your callsign first.** Until you do, the input line shows `NO CALL SET`, the radio won't send, and it won't
@@ -41,6 +41,22 @@ VIA K2ABC
 ABCDEFGHIJKLMNOPQR
 STUVWXYZ012
 ```
+
+## Keying messages in CW
+
+Press \* until the mode shows `C`. The keyer now gives sidetone only (nothing goes on the air), and every character
+you key is typed into the message. It uses your normal keyer settings: WPM, mode and key input. A word gap
+inserts a space. Press MENU to send, or \* to go back to `A`. Leaving the messenger also leaves CW mode.
+
+## Addressed messages
+
+Everyone receives and relays every message. Starting a message with an address only changes who gets the alert
+(beep + envelope icon):
+
+* `@NR7Y HI` or `NR7Y DE W9SSN HI` alerts only NR7Y. The second form can be keyed in CW, since Morse has no `@`.
+* `CQ DE W9SSN`, `QST ...` and anything without an address alert everyone.
+
+Other stations still see an addressed message on their messenger screen; it's open amateur traffic.
 
 ## Menu items
 

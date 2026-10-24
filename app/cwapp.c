@@ -17,6 +17,9 @@
 // CW application-level update loop and end-of-transmission handling
 // Extracted from app.c to give CW its own independent PTT / EOT path.
 
+#ifdef ENABLE_MESSENGER
+	#include "app/messenger.h"
+#endif
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -87,6 +90,9 @@ void CW_AppUpdate(void)
 #ifdef ENABLE_CODE_PRACTICE
 		|| gCW_CpoActive
 #endif
+#ifdef ENABLE_MESSENGER
+		|| gMsgCwEntry                // keying a text message: sidetone only
+#endif
 	))
 	{
 		// Not in CW mode – paranoid check to end CW TX
@@ -109,6 +115,9 @@ void CW_AppUpdate(void)
 	if ( !gEeprom.CW_BREAKIN_ENABLE || gCW_Recording || gCW_AdcReadActive
 #ifdef ENABLE_CODE_PRACTICE
 		|| gCW_CpoActive
+#endif
+#ifdef ENABLE_MESSENGER
+		|| gMsgCwEntry
 #endif
 		) {
 		switch (action)
@@ -146,6 +155,9 @@ void CW_AppUpdate(void)
 				#endif
 				#ifdef ENABLE_CODE_PRACTICE
 				if (!gCW_CpoActive)  // just stay in ALAM for CPO
+				#endif
+				#ifdef ENABLE_MESSENGER
+				if (!gMsgCwEntry)    // ..and while keying a text message
 				#endif
 					RADIO_SetModulation(gRxVfo->Modulation);
 				gCW_TxDisplayHoldoff_10ms = 200;
